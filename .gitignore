@@ -1,0 +1,115 @@
+# ##############################################################################
+# ## .gitignore completo para projetos .NET (Core, Framework, MAUI, etc.)     ##
+# ##                                                                          ##
+# ## Este arquivo ignora artefatos de build, arquivos específicos de usuário,   ##
+# ## configurações locais, segredos e caches de ferramentas comuns.            ##
+# ##############################################################################
+
+
+# --- IDEs e Ferramentas (Visual Studio, Rider, VS Code) ---
+# Arquivos de usuário e estado da solução do Visual Studio
+*.suo
+*.user 
+*.userosscache
+*.sln.docstates
+.vs/
+
+# Arquivos de usuário do Rider (JetBrains)
+.idea/
+*.DotSettings.user
+
+# Arquivos do VS Code (ignoramos tudo, exceto configurações que DEVEM ser compartilhadas)
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+
+# --- Artefatos de Build do .NET ---
+# Ignora as pastas de binários e objetos de build. ESSENCIAL.
+[Bb]in/
+[Oo]bj/
+
+
+# --- Segredos e Configurações de Ambiente ---
+# NUNCA envie segredos ou configurações locais para o repositório.
+# O appsettings.json principal (com valores padrão não secretos) DEVE ser versionado.
+# Já o de desenvolvimento, que pode conter senhas de banco ou chaves locais, NÃO DEVE.
+appsettings.Development.json
+secrets.json
+*.env
+
+# Arquivos de variáveis de ambiente do Docker Compose
+.env
+
+
+# --- Publicação e Pacotes ---
+# Saída do comando 'dotnet publish'
+**/[Pp]ublish/
+
+# Cache do Nuget (para projetos antigos que usam packages.config)
+packages/
+*.nupkg
+
+# Dependências de front-end (se você usar Angular, React, etc., na sua solução)
+node_modules/
+wwwroot/dist/
+
+
+# --- Testes e Cobertura de Código ---
+# Resultados de testes e relatórios de cobertura
+TestResults/
+*.trx
+*.coverlet.json
+*.coverage
+*.coverage.xml
+
+
+# --- Arquivos de Log e Temporários ---
+# Arquivos de log gerados em tempo de execução
+*.log
+*.log.*.txt
+logs/
+
+
+# --- Arquivos específicos do Sistema Operacional ---
+# Cache de miniaturas do Windows
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+
+# Arquivos de metadados do macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Arquivos de metadados do Linux
+._*
+
+
+# --- Caches de Ferramentas Específicas ---
+# ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+
+# NCrunch
+_NCrunch_*
+*.ncrunch*
+.*crunch*.local.xml
+
+# StyleCop
+StyleCop.Cache
+
+
+# --- Outros ---
+# Arquivos de deploy do WebDeploy
+*.Publish.xml
+*.pubxml
+
+# Arquivos de backup do Visual Studio
+*~
+*.bak
+
+# Certificados de teste do ASP.NET Core
+*.pfx
