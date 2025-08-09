@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ApiPaymentServices.Models.Payload;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,6 +9,6 @@ namespace ApiPaymentServices.Services
 {
     public interface IPaymentService
     {
-        Task<HttpResponseMessage> CreatePaymentAsync(string paymentDetails);
+        Task<HttpResponseMessage> CreatePaymentAsync(PaymentPayloadModel payment);
     }
 }

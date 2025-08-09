@@ -2,7 +2,8 @@
 {
     public class Payment
     {
-        public Guid Id { get; set; }
-        public float Value { get; set; }
+        public Guid CorrelationId { get; set; }
+        public float Amount { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }
