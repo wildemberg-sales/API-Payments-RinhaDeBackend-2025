@@ -1,8 +1,8 @@
 using ApiPayment.ApiBackgroundServices;
 using ApiPayments.ApiBackgroundServices;
 using ApiPaymentServices;
-using ApiPaymentServices.QueueService;
-using ApiPaymentServices.State;
+using ApiPaymentServices.Singletons.QueueService;
+using ApiPaymentServices.Singletons.State;
 
 var builder = WebApplication.CreateBuilder(args);
 

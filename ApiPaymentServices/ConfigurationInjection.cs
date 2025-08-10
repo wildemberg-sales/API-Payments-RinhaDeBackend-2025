@@ -1,7 +1,7 @@
-﻿using ApiPaymentServices.QueueService;
+﻿using ApiPaymentServices.Clients;
+using ApiPaymentServices.Clients.Impl;
 using ApiPaymentServices.Services;
 using ApiPaymentServices.Services.Impl;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -14,6 +14,7 @@ namespace ApiPaymentServices
         {
 
             services.AddScoped<IPaymentService, PaymentService>();
+            services.AddScoped<IPaymentExternalClient, PaymentExternalClient>();
 
             return services;
         }

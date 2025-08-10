@@ -1,8 +1,8 @@
 ﻿using ApiPaymentServices.Models;
 
-namespace ApiPaymentServices.QueueService
+namespace ApiPaymentServices.Singletons.QueueService
 {
-    public  class PaymentQueueService : IPaymentQueueService
+    public  class PaymentQueueService
     {
         private static readonly PaymentQueueService _instance = new();
         public static PaymentQueueService Instance => _instance;
