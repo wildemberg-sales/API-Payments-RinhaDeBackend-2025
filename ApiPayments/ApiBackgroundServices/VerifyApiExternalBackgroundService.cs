@@ -1,5 +1,4 @@
 ﻿using ApiPaymentServices.Clients;
-using ApiPaymentServices.Clients.Impl;
 using ApiPaymentServices.Singletons.State;
 
 namespace ApiPayments.ApiBackgroundServices

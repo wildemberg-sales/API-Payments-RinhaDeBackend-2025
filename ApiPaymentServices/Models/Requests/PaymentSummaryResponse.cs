@@ -1,15 +1,14 @@
 ﻿using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
 namespace ApiPaymentServices.Models.Requests
 {
     public class PaymentSummaryResponse
     {
         [JsonPropertyName("default")]
-        public PaymentSummaryData Default { get; set; }
+        public PaymentSummaryData Default { get; set; } = new();
         
         [JsonPropertyName("fallback")]
-        public PaymentSummaryData Fallback { get; set;}
+        public PaymentSummaryData Fallback { get; set;} = new();
         public PaymentSummaryResponse() { }
 
         public static PaymentSummaryResponse Create(int defaultTotalRequest, float defaultTotalAmount, int fallbackTotalRequest, float fallbackTotalAmount)

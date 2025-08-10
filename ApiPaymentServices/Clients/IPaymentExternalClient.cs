@@ -10,7 +10,7 @@ namespace ApiPaymentServices.Clients
 {
     public interface IPaymentExternalClient
     {
-        Task<bool> SendPaymentForExternalService(Payment payment);
+        Task<(bool, bool)> SendPaymentForExternalService(Payment payment, string urlDefault, string urlFallback);
         Task<(PaymentHealthCheckResponse, PaymentHealthCheckResponse)> GetStatusApiExternal(string urlDefault, string urlFallback);
     }
 }

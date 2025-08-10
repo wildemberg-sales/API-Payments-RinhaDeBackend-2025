@@ -1,5 +1,6 @@
 ﻿using ApiPaymentServices.Models;
 using ApiPaymentServices.Models.Requests;
+using ApiPaymentServices.Singletons.QueueService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Net;
@@ -10,11 +11,13 @@ namespace ApiPaymentServices.Services.Impl
     {
         private readonly ApiDbContext _context;
         private readonly ILogger<PaymentService> _logger;
+        private readonly PaymentQueueService _queueService;
 
-        public PaymentService(ApiDbContext context, ILogger<PaymentService> logger)
+        public PaymentService(ApiDbContext context, ILogger<PaymentService> logger, PaymentQueueService queueService)
         {
             _context = context;
             _logger = logger;
+            _queueService = queueService;
         }
 
         public async Task<HttpResponseResult<Payment>> CreatePaymentAsync(PaymentPayloadModel payment)
@@ -32,9 +35,10 @@ namespace ApiPaymentServices.Services.Impl
                 return HttpResponseResult<Payment>.Fail("Payment Not Created", HttpStatusCode.BadRequest);
             }
 
-            //Implementar adicao a fila
-
             _logger.LogInformation("Payment Created Successfully");
+            
+            _queueService.queue.Enqueue(pay);
+
             return HttpResponseResult<Payment>.Created(pay, "Payment Created Successfully");
         }
 

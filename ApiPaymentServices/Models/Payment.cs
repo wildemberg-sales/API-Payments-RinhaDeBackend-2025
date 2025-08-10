@@ -1,4 +1,6 @@
-﻿namespace ApiPaymentServices.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace ApiPaymentServices.Models
 {
     public class Payment
     {
