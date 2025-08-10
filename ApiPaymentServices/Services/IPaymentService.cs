@@ -1,14 +1,10 @@
-﻿using ApiPaymentServices.Models.Payload;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using ApiPaymentServices.Models;
+using ApiPaymentServices.Models.Requests;
 
 namespace ApiPaymentServices.Services
 {
     public interface IPaymentService
     {
-        Task<HttpResponseMessage> CreatePaymentAsync(PaymentPayloadModel payment);
+        Task<HttpResponseResult<Payment>> CreatePaymentAsync(PaymentPayloadModel payment);
     }
 }

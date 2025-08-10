@@ -1,4 +1,4 @@
-﻿using ApiPaymentServices.Models.Payload;
+﻿using ApiPaymentServices.Models.Requests;
 using ApiPaymentServices.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,13 +8,14 @@ namespace ApiPayments.Controllers
     public class PaymentsController : ControllerBase
     {
         [HttpPost("payments")]
-        public async Task<HttpResponseMessage> CreatePayment
+        public async Task<IActionResult> CreatePayment
         (
             [FromServices] IPaymentService service,
             [FromBody] PaymentPayloadModel payload
         )
         {
-            return await service.CreatePaymentAsync(payload);
+            var res = await service.CreatePaymentAsync(payload);
+            return StatusCode((int)res.StatusCode, res);
         }
 
 

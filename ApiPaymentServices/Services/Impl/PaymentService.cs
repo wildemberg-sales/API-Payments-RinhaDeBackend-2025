@@ -1,5 +1,5 @@
 ﻿using ApiPaymentServices.Models;
-using ApiPaymentServices.Models.Payload;
+using ApiPaymentServices.Models.Requests;
 using Microsoft.Extensions.Logging;
 using System.Net;
 
@@ -16,34 +16,29 @@ namespace ApiPaymentServices.Services.Impl
             _logger = logger;
         }
 
-        public async Task<HttpResponseMessage> CreatePaymentAsync(PaymentPayloadModel payment)
+        public async Task<HttpResponseResult<Payment>> CreatePaymentAsync(PaymentPayloadModel payment)
         {
+            Payment pay = new Payment
+            {
+                CorrelationId = payment.correlationId,
+                Amount = payment.amount,
+                CreatedAt = DateTime.UtcNow
+            };
+
             try
             {
-                _context.Payments.Add(new Payment
-                {
-                    CorrelationId = payment.correlationId,
-                    Amount = payment.amount,
-                    CreatedAt = DateTime.UtcNow
-                });
-
+                _context.Payments.Add(pay);
                 await _context.SaveChangesAsync();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex.Message);
-                return new HttpResponseMessage(HttpStatusCode.BadRequest)
-                {
-                    Content = new StringContent("Payment not created")
-                };
+                return HttpResponseResult<Payment>.Fail("Payment Not Created", HttpStatusCode.BadRequest);
             }
 
             _logger.LogInformation("Payment cadastrado com sucesso");
 
-            return new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent("Payment created successfully")
-            };
+            return HttpResponseResult<Payment>.Created(pay, "Payment Created Successfully");
         }
     }
 }
