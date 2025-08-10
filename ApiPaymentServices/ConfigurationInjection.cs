@@ -1,4 +1,5 @@
-﻿using ApiPaymentServices.Services;
+﻿using ApiPaymentServices.QueueService;
+using ApiPaymentServices.Services;
 using ApiPaymentServices.Services.Impl;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
