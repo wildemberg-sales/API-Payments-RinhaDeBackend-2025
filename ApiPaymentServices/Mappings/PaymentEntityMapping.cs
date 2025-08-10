@@ -19,6 +19,14 @@ namespace ApiPaymentServices.Mappings
             builder
                 .Property(p => p.CreatedAt)
                 .IsRequired();
+
+            builder
+                .Property(p => p.IsProcessed)
+                .IsRequired();
+
+            builder
+                .Property(p => p.IsFallback)
+                .IsRequired();
         }
     }
 }

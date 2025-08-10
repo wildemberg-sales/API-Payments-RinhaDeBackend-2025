@@ -6,5 +6,9 @@ namespace ApiPaymentServices.Services
     public interface IPaymentService
     {
         Task<HttpResponseResult<Payment>> CreatePaymentAsync(PaymentPayloadModel payment);
+
+        Task UpdatePaymentAsync(Payment payment, bool isFallback);
+
+        Task<HttpResponseResult<PaymentSummaryResponse>> GetPaymentsSummaryAsync(DateTime? from, DateTime? to);
     }
 }

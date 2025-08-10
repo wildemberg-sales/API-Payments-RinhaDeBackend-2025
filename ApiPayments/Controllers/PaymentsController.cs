@@ -18,14 +18,15 @@ namespace ApiPayments.Controllers
             return StatusCode((int)res.StatusCode, res);
         }
 
-
         [HttpGet("payments-summary")]
-        public object GetAll()
+        public async Task<IActionResult> GetPaymentsSummaryAsync(
+            [FromServices] IPaymentService service,
+            [FromQuery] DateTime? from,
+            [FromQuery] DateTime? to
+        )
         {
-            return new
-            {
-                doido = "sou mesmo"
-            };
+            var res = await service.GetPaymentsSummaryAsync(from, to);
+            return StatusCode((int)res.StatusCode, res.Data);
         }
     }
 

@@ -1,5 +1,6 @@
 ﻿using ApiPaymentServices.Models;
 using ApiPaymentServices.Models.Requests;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Net;
 
@@ -18,12 +19,7 @@ namespace ApiPaymentServices.Services.Impl
 
         public async Task<HttpResponseResult<Payment>> CreatePaymentAsync(PaymentPayloadModel payment)
         {
-            Payment pay = new Payment
-            {
-                CorrelationId = payment.correlationId,
-                Amount = payment.amount,
-                CreatedAt = DateTime.UtcNow
-            };
+            Payment pay = Payment.Create(payment.correlationId, payment.amount);
 
             try
             {
@@ -32,13 +28,58 @@ namespace ApiPaymentServices.Services.Impl
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message);
+                _logger.LogError($"Error in creation: {ex.Message}");
                 return HttpResponseResult<Payment>.Fail("Payment Not Created", HttpStatusCode.BadRequest);
             }
 
-            _logger.LogInformation("Payment cadastrado com sucesso");
+            //Implementar adicao a fila
 
+            _logger.LogInformation("Payment Created Successfully");
             return HttpResponseResult<Payment>.Created(pay, "Payment Created Successfully");
+        }
+
+        public async Task UpdatePaymentAsync(Payment payment, bool isFallback)
+        {
+            try
+            {
+                payment.Update(isProcessed: true, isFallback: isFallback);
+                _context.Update(payment);
+                await _context.SaveChangesAsync();
+            }
+            catch(Exception ex)
+            {
+                _logger.LogError($"Update Error payment -> {payment} -> With error: {ex.Message}");
+            }
+
+            _logger.LogInformation($"Payment -> {payment} -> Updated Successfully");
+        }
+
+        public async Task<HttpResponseResult<PaymentSummaryResponse>> GetPaymentsSummaryAsync(DateTime? from = null, DateTime? to = null)
+        {
+            var query = _context.Payments.Where(p => p.IsProcessed).AsQueryable();
+
+            if(from != null)
+                query = query.Where(p => p.CreatedAt >= from);
+            
+            if(to != null)
+                query = query.Where(p => p.CreatedAt <= from);
+
+            var res = await query.ToListAsync();
+
+            if (res == null)
+            {
+                _logger.LogError("Not payments found in database");
+                return HttpResponseResult<PaymentSummaryResponse>.Fail("Not Found Items", HttpStatusCode.NotFound);
+            }
+
+            PaymentSummaryResponse response = PaymentSummaryResponse.Create(
+                defaultTotalRequest: res.Count(p => !p.IsFallback),
+                defaultTotalAmount: (float)Math.Round(res.Where(p => !p.IsFallback).Sum(p => p.Amount), 2),
+                fallbackTotalRequest: res.Count(p => p.IsFallback),
+                fallbackTotalAmount: (float)Math.Round(res.Where(p => p.IsFallback).Sum(p => p.Amount), 2)
+            );
+
+            return HttpResponseResult<PaymentSummaryResponse>.Ok(response);
         }
     }
 }
