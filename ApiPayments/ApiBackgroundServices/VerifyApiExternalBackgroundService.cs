@@ -20,7 +20,7 @@ namespace ApiPayments.ApiBackgroundServices
             {
                 try
                 {
-                    _logger.LogInformation("Execução da verificação de estado das apis externas");
+                    _logger.LogInformation("Execution of the status check of external APIs");
 
                     using(var scope = _scopeFactory.CreateScope())
                     {
@@ -36,20 +36,22 @@ namespace ApiPayments.ApiBackgroundServices
 
                         if (defaultStatus == null || fallbackStatus == null)
                         {
-                            _logger.LogError($"Erro ao verificar estado da api externa - retorno null\n default-status: {defaultStatus} \n fallback-status: {fallbackStatus}");
+                            _logger.LogError($"Error checking the status of the external API - response null\n default-status: {defaultStatus} \n fallback-status: {fallbackStatus}");
                             throw new HttpRequestException();
                         }
 
-                        state.ExternalDefaultPaymentUp = defaultStatus.failing;
+                        _logger.LogInformation("Request successfully made to external APIs focusing on health");
+
+                        state.ExternalDefaultPaymentUp = !defaultStatus.failing;
                         state.TimeExternalDefaultPayment = defaultStatus.minResponseTime;
-                        state.ExternalFallbackPaymentUp = fallbackStatus.failing;
+                        state.ExternalFallbackPaymentUp = !fallbackStatus.failing;
                         state.TimeExternalFallbackPayment = fallbackStatus.minResponseTime;
                     }
 
                 }
                 catch(Exception ex)
                 {
-                    _logger.LogError($"Erro ao verificar estado da api externa: {ex.Message}");
+                    _logger.LogError($"Error checking the status of the external API: {ex.Message}");
                 }
 
                 await Task.Delay(5000);

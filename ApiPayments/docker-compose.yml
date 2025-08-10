@@ -2,6 +2,45 @@ version: '3.8'
 
 services:
 
+  api1:
+    build:
+      context: ..
+      dockerfile: ApiPayments/Dockerfile
+    container_name: api_instance_1
+    restart: always
+    ports:
+      - "5001:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - payment-processor
+      - local
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__Local=Host=db;Database=payments_db;Username=db_user;Password=1234
+      - "URL_DEFAULT=http://payment-processor-default:8080"
+      - "URL_FALLBACK=http://payment-processor-fallback:8080"
+  
+  api2:
+    build:
+      context: ..
+      dockerfile: ApiPayments/Dockerfile
+    container_name: api_instance_2
+    restart: always
+    ports:
+      - "5002:8001"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - payment-processor
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=db;Database=payments_db;Username=db_user;Password=1234
+      - "URL_DEFAULT=http://payment-processor-default:8080"
+      - "URL_FALLBACK=http://payment-processor-fallback:8080"
+
   db:
     image: postgres:15-alpine
     container_name: postgres_db
@@ -14,11 +53,20 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - local
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U db_user -d payments_db"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+networks:
+  local:
+    name: local
+    driver: bridge
+  payment-processor:
+    external: true
 
 volumes:
   postgres_data:

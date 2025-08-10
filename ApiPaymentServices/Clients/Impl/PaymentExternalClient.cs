@@ -27,13 +27,15 @@ namespace ApiPaymentServices.Clients.Impl
                 var dataDefault = await responseDefault.Content.ReadFromJsonAsync<PaymentHealthCheckResponse>();
 
                 var responseFallback = await client.GetAsync($"{urlFallback}/payments/service-health");
-                var dataFallback = await responseDefault.Content.ReadFromJsonAsync<PaymentHealthCheckResponse>();
+                var dataFallback = await responseFallback.Content.ReadFromJsonAsync<PaymentHealthCheckResponse>();
+
+                _logger.LogInformation("Successfully in health check requisiton");
 
                 return (dataDefault!, dataFallback!);
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Falha durante requisição de health check: {ex.Message}");
+                _logger.LogError($"Fail in health check requisition: {ex.Message}");
                 return (null, null);
             }
             
@@ -43,8 +45,11 @@ namespace ApiPaymentServices.Clients.Impl
         {
             HttpClient client = new HttpClient();
 
+            _logger.LogWarning("Initializing Payment External Requisition");
+
             if (_state.ExternalDefaultPaymentUp)
             {
+                _logger.LogWarning("Default Route Payment");
                 try
                 {
                     var response = await client.PostAsJsonAsync($"{urlDefault}/payments", new
@@ -54,19 +59,28 @@ namespace ApiPaymentServices.Clients.Impl
                         requestedAt = DateTime.UtcNow,
                     });
 
-                    if(response.IsSuccessStatusCode)
-                        return (true, false);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var responseBody = await response.Content.ReadAsStringAsync();
+                        _logger.LogError("Fail Payment. Status: {StatusCode} - {ReasonPhrase}. Body: {ResponseBody}",
+                            (int)response.StatusCode,
+                            response.ReasonPhrase,
+                            responseBody);
+                        return (false, false);
+                    }
 
-                    return (false, false);
+                    _logger.LogInformation($"Default Payment Successfully: {payment.CorrelationId}");
+                    return (true, false);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError($"Falha durante requisição de pagamento: {ex.Message}");
+                    _logger.LogError($"Exception In Payment Requisiton Default: {ex.Message}");
                     return (false, false);
                 }
             }
             else if (_state.ExternalFallbackPaymentUp)
             {
+                _logger.LogWarning("Fallback Route Payment");
                 try
                 {
                     var response = await client.PostAsJsonAsync($"{urlFallback}/payments", new
@@ -83,13 +97,13 @@ namespace ApiPaymentServices.Clients.Impl
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError($"Falha durante requisição de pagamento: {ex.Message}");
+                    _logger.LogError($"Exception In Payment Requisition Fallback: {ex.Message}");
                     return (false, false);
                 }
             }
 
+            _logger.LogWarning("No API External Avaliable");
             return (false, false);
         }
-
     }
 }

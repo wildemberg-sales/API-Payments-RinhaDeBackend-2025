@@ -1,4 +1,5 @@
-﻿using ApiPaymentServices.Clients.Impl;
+﻿using ApiPaymentServices.Clients;
+using ApiPaymentServices.Clients.Impl;
 using ApiPaymentServices.Models;
 using ApiPaymentServices.Services;
 using ApiPaymentServices.Singletons.QueueService;
@@ -8,57 +9,58 @@ namespace ApiPayment.ApiBackgroundServices
     public class ProcessPaymentBackgroundService : BackgroundService
     {
         private readonly ILogger<ProcessPaymentBackgroundService> _logger;
-        private readonly PaymentQueueService _queueService;
-        private readonly PaymentExternalClient _client;
-        private readonly IPaymentService _servicePayment;
+        private readonly IServiceScopeFactory _scopreFactory;
 
-        public ProcessPaymentBackgroundService(ILogger<ProcessPaymentBackgroundService> logger,
-                                                PaymentQueueService queueservice,
-                                                PaymentExternalClient client,
-                                                IPaymentService servicePayment)
+        public ProcessPaymentBackgroundService(ILogger<ProcessPaymentBackgroundService> logger, IServiceScopeFactory scopreFactory)
         {
             _logger = logger;
-            _queueService = queueservice;
-            _client = client;
-            _servicePayment = servicePayment;
+            _scopreFactory = scopreFactory;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                if (_queueService.queue.Count <= 0)
+                using(var scope = _scopreFactory.CreateScope())
                 {
-                    _logger.LogWarning("Fila de pagementos vazia");
-                    continue;
-                }
+                    var scopeProvider = scope.ServiceProvider;
 
-                try
-                {
-                    _logger.LogInformation($"Execução da pagamento pelas apis: {(_queueService.queue.Count() > 0 ? _queueService.queue.Peek().CorrelationId : "Nenhum pagamento na fila" )}");
+                    var _queueService = scopeProvider.GetRequiredService<PaymentQueueService>();
+                    var _client = scopeProvider.GetRequiredService<IPaymentExternalClient>();
+                    var _servicePayment = scopeProvider.GetRequiredService<IPaymentService>();
 
-                    Payment pay = _queueService.queue.Dequeue();
-
-                    var (res, isFallback) = await _client.SendPaymentForExternalService(
-                        pay,
-                        Environment.GetEnvironmentVariable("URL_DEFAULT")!,
-                        Environment.GetEnvironmentVariable("URL_FALLBACK")!
-                     );
-
-                    if (!res)
+                    if (_queueService.queue.Count <= 0)
                     {
-                        _queueService.queue.Enqueue(pay);
-                        _logger.LogError($"Pagemento nao efetuado: {pay.CorrelationId}");
+                        _logger.LogWarning("Empty payment queue");
                         continue;
                     }
 
-                    _logger.LogInformation($"Pagemento efetuado com sucesso: {pay.CorrelationId}");
+                    try
+                    {
+                        _logger.LogInformation($"Execution of payment through the APIs: {(_queueService.queue.Count() > 0 ? _queueService.queue.Peek().CorrelationId : "Nenhum pagamento na fila" )}");
 
-                    await _servicePayment.UpdatePaymentAsync(pay, isFallback);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError("erro ao processar pagamento");
+                        Payment pay = _queueService.queue.Dequeue();
+
+                        var (res, isFallback) = await _client.SendPaymentForExternalService(
+                            pay,
+                            Environment.GetEnvironmentVariable("URL_DEFAULT")!,
+                            Environment.GetEnvironmentVariable("URL_FALLBACK")!
+                         );
+
+                        if (!res)
+                        {
+                            _queueService.queue.Enqueue(pay);
+                            _logger.LogError($"Payment not made, add payment to the queue again: {pay.CorrelationId}");
+                            continue;
+                        }
+
+                        _logger.LogInformation($"Payment made successfully: {pay.CorrelationId}");
+                        await _servicePayment.UpdatePaymentAsync(pay, isFallback);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError("Exception in payment processing in the background service");
+                    }
                 }
             }
         }

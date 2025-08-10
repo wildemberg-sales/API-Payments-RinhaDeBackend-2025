@@ -113,3 +113,5 @@ StyleCop.Cache
 
 # Certificados de teste do ASP.NET Core
 *.pfx
+
+PaymentsExtern
