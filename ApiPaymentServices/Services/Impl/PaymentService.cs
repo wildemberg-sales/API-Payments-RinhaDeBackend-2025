@@ -42,11 +42,11 @@ namespace ApiPaymentServices.Services.Impl
             return HttpResponseResult<Payment>.Created(pay, "Payment Created Successfully");
         }
 
-        public async Task UpdatePaymentAsync(Payment payment, bool isFallback)
+        public async Task UpdatePaymentAsync(Payment payment, bool isFallback, DateTime requestedAt)
         {
             try
             {
-                payment.Update(isProcessed: true, isFallback: isFallback);
+                payment.Update(isProcessed: true, isFallback: isFallback, createdAt: requestedAt);
                 _context.Update(payment);
                 await _context.SaveChangesAsync();
             }

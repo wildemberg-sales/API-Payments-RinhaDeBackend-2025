@@ -41,11 +41,12 @@ namespace ApiPaymentServices.Clients.Impl
             
         }
 
-        public async Task<(bool, bool)> SendPaymentForExternalService(Payment payment, string urlDefault, string urlFallback)
+        public async Task<(bool, bool, DateTime)> SendPaymentForExternalService(Payment payment, string urlDefault, string urlFallback)
         {
-            HttpClient client = new HttpClient();
-
             _logger.LogWarning("Initializing Payment External Requisition");
+
+            HttpClient client = new HttpClient();
+            DateTime requestedAt = DateTime.UtcNow;
 
             if (_state.ExternalDefaultPaymentUp)
             {
@@ -56,7 +57,7 @@ namespace ApiPaymentServices.Clients.Impl
                     {
                         correlationId = payment.CorrelationId,
                         amount = payment.Amount,
-                        requestedAt = DateTime.UtcNow,
+                        requestedAt,
                     });
 
                     if (!response.IsSuccessStatusCode)
@@ -66,16 +67,16 @@ namespace ApiPaymentServices.Clients.Impl
                             (int)response.StatusCode,
                             response.ReasonPhrase,
                             responseBody);
-                        return (false, false);
+                        return (false, false, requestedAt);
                     }
 
                     _logger.LogInformation($"Default Payment Successfully: {payment.CorrelationId}");
-                    return (true, false);
+                    return (true, false, requestedAt);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError($"Exception In Payment Requisiton Default: {ex.Message}");
-                    return (false, false);
+                    return (false, false, requestedAt);
                 }
             }
             else if (_state.ExternalFallbackPaymentUp)
@@ -87,23 +88,23 @@ namespace ApiPaymentServices.Clients.Impl
                     {
                         correlationId = payment.CorrelationId,
                         amount = payment.Amount,
-                        requestedAt = DateTime.UtcNow,
+                        requestedAt,
                     });
 
                     if (response.IsSuccessStatusCode)
-                        return (true, true);
+                        return (true, true, requestedAt);
 
-                    return (false, true);
+                    return (false, true, requestedAt);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError($"Exception In Payment Requisition Fallback: {ex.Message}");
-                    return (false, false);
+                    return (false, false, requestedAt);
                 }
             }
 
             _logger.LogWarning("No API External Avaliable");
-            return (false, false);
+            return (false, false, requestedAt);
         }
     }
 }

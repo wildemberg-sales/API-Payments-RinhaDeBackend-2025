@@ -41,7 +41,7 @@ namespace ApiPayment.ApiBackgroundServices
 
                         Payment pay = _queueService.queue.Dequeue();
 
-                        var (res, isFallback) = await _client.SendPaymentForExternalService(
+                        var (res, isFallback, requestedAt) = await _client.SendPaymentForExternalService(
                             pay,
                             Environment.GetEnvironmentVariable("URL_DEFAULT")!,
                             Environment.GetEnvironmentVariable("URL_FALLBACK")!
@@ -55,7 +55,7 @@ namespace ApiPayment.ApiBackgroundServices
                         }
 
                         _logger.LogInformation($"Payment made successfully: {pay.CorrelationId}");
-                        await _servicePayment.UpdatePaymentAsync(pay, isFallback);
+                        await _servicePayment.UpdatePaymentAsync(pay, isFallback, requestedAt);
                     }
                     catch (Exception ex)
                     {
