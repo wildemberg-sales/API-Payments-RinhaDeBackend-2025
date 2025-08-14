@@ -6,8 +6,8 @@
       "launchUrl": "swagger",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "URL_DEFAULT": "http://payment-processor-default:8080",
-        "URL_FALLBACK": "http://payment-processor-fallback:8080"
+        "URL_DEFAULT": "http://localhost:8001",
+        "URL_FALLBACK": "http://locahost:8002"
       },
       "dotnetRunMessages": true,
       "applicationUrl": "http://localhost:5299"

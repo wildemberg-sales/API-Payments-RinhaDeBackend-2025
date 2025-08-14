@@ -10,16 +10,18 @@ namespace ApiPaymentServices.Clients.Impl
     {
         private readonly ILogger<PaymentExternalClient> _logger;
         private readonly ExternalPaymentServiceState _state;
+        private readonly IHttpClientFactory _httpClient;
 
-        public PaymentExternalClient(ILogger<PaymentExternalClient> logger, ExternalPaymentServiceState state) 
+        public PaymentExternalClient(ILogger<PaymentExternalClient> logger, ExternalPaymentServiceState state, IHttpClientFactory httpClient) 
         {
             _logger = logger;
             _state = state;
+            _httpClient = httpClient;
         }
 
         public async Task<(PaymentHealthCheckResponse, PaymentHealthCheckResponse)> GetStatusApiExternal(string urlDefault, string urlFallback)
         {
-            HttpClient client = new HttpClient();
+            HttpClient client = _httpClient.CreateClient();
 
             try
             {
@@ -35,7 +37,7 @@ namespace ApiPaymentServices.Clients.Impl
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Fail in health check requisition: {ex.Message}");
+                _logger.LogError("Fail in health check requisition: ", ex.Message);
                 return (null, null);
             }
             
@@ -45,7 +47,7 @@ namespace ApiPaymentServices.Clients.Impl
         {
             _logger.LogWarning("Initializing Payment External Requisition");
 
-            HttpClient client = new HttpClient();
+            HttpClient client = _httpClient.CreateClient("PaymentsExternal");
             DateTime requestedAt = DateTime.UtcNow;
 
             if (_state.ExternalDefaultPaymentUp)
@@ -70,12 +72,12 @@ namespace ApiPaymentServices.Clients.Impl
                         return (false, false, requestedAt);
                     }
 
-                    _logger.LogInformation($"Default Payment Successfully: {payment.CorrelationId}");
+                    _logger.LogInformation("Default Payment Successfully: ", payment.CorrelationId);
                     return (true, false, requestedAt);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError($"Exception In Payment Requisiton Default: {ex.Message}");
+                    _logger.LogError("Exception In Payment Requisiton Default: ", ex.Message);
                     return (false, false, requestedAt);
                 }
             }
@@ -98,7 +100,7 @@ namespace ApiPaymentServices.Clients.Impl
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError($"Exception In Payment Requisition Fallback: {ex.Message}");
+                    _logger.LogError("Exception In Payment Requisition Fallback: ", ex.Message);
                     return (false, false, requestedAt);
                 }
             }

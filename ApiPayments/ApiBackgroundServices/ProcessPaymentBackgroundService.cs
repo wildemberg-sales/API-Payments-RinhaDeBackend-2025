@@ -1,67 +1,85 @@
-﻿using ApiPaymentServices.Clients;
-using ApiPaymentServices.Clients.Impl;
+﻿using ApiPaymentServices.Channels;
+using ApiPaymentServices.Clients;
 using ApiPaymentServices.Models;
+using ApiPaymentServices.Models.Requests;
 using ApiPaymentServices.Services;
-using ApiPaymentServices.Singletons.QueueService;
+using ApiPaymentServices.Services.Impl;
 
 namespace ApiPayment.ApiBackgroundServices
 {
     public class ProcessPaymentBackgroundService : BackgroundService
     {
         private readonly ILogger<ProcessPaymentBackgroundService> _logger;
-        private readonly IServiceScopeFactory _scopreFactory;
+        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly QueuePaymentDatabaseChannel _channel;
+        private readonly QueuePaymentRequisitionChannel _channelReq;
 
-        public ProcessPaymentBackgroundService(ILogger<ProcessPaymentBackgroundService> logger, IServiceScopeFactory scopreFactory)
+        public ProcessPaymentBackgroundService(
+            ILogger<ProcessPaymentBackgroundService> logger,
+            IServiceScopeFactory scopeFactory,
+            QueuePaymentDatabaseChannel channel,
+            QueuePaymentRequisitionChannel channelReq)
         {
             _logger = logger;
-            _scopreFactory = scopreFactory;
+            _scopeFactory = scopeFactory;
+            _channel = channel;
+            _channelReq = channelReq;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            while (!stoppingToken.IsCancellationRequested)
+            int numberOfConsumers = 4;
+            _logger.LogInformation("Iniciando {NumberOfConsumers} consumidores para o processamento de pagamentos de banco de dados.", numberOfConsumers);
+
+            var tasks = Enumerable.Range(0, numberOfConsumers)
+           .Select(_ => Task.Run(() => ConsumerLoop(stoppingToken), stoppingToken));
+
+            await Task.WhenAll(tasks);
+
+            _logger.LogInformation("Todos os consumidores de pagamento foram encerrados.");
+        }
+
+        private async Task ConsumerLoop(CancellationToken stoppingToken)
+        {
+            try
             {
-                using(var scope = _scopreFactory.CreateScope())
+                _logger.LogWarning("Initialize Process payments background");
+                await foreach (var pay in _channel.AllPaymentsDatabaseQueueAsync(stoppingToken))
                 {
-                    var scopeProvider = scope.ServiceProvider;
-
-                    var _queueService = scopeProvider.GetRequiredService<PaymentQueueService>();
-                    var _client = scopeProvider.GetRequiredService<IPaymentExternalClient>();
-                    var _servicePayment = scopeProvider.GetRequiredService<IPaymentService>();
-
-                    if (_queueService.queue.Count <= 0)
-                    {
-                        _logger.LogWarning("Empty payment queue");
-                        continue;
-                    }
-
-                    try
-                    {
-                        _logger.LogInformation($"Execution of payment through the APIs: {(_queueService.queue.Count() > 0 ? _queueService.queue.Peek().CorrelationId : "Nenhum pagamento na fila" )}");
-
-                        Payment pay = _queueService.queue.Dequeue();
-
-                        var (res, isFallback, requestedAt) = await _client.SendPaymentForExternalService(
-                            pay,
-                            Environment.GetEnvironmentVariable("URL_DEFAULT")!,
-                            Environment.GetEnvironmentVariable("URL_FALLBACK")!
-                         );
-
-                        if (!res)
-                        {
-                            _queueService.queue.Enqueue(pay);
-                            _logger.LogError($"Payment not made, add payment to the queue again: {pay.CorrelationId}");
-                            continue;
-                        }
-
-                        _logger.LogInformation($"Payment made successfully: {pay.CorrelationId}");
-                        await _servicePayment.UpdatePaymentAsync(pay, isFallback, requestedAt);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError("Exception in payment processing in the background service");
-                    }
+                    await ProcessPaymentDatabaseAsync(pay, stoppingToken);
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("Operação cancelada. Consumidor de pagamentos encerrando.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogCritical(ex, "Erro fatal no loop do consumidor de pagamentos do banco de dados. Thread: {ThreadId}", Environment.CurrentManagedThreadId);
+            }
+        }
+
+        private async Task ProcessPaymentDatabaseAsync(PaymentPayloadModel pay, CancellationToken stoppingToken)
+        {
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var scopeProvider = scope.ServiceProvider;
+                var _paymentService = scopeProvider.GetRequiredService<IPaymentService>();
+
+                Payment payment = Payment.Create(pay.correlationId, pay.amount);
+
+                bool inserted = await _paymentService.CreatePaymentAsync(payment);
+
+                if (inserted)
+                {
+                    await _channelReq.AddPaymentRequisitionAsync(payment);
+                }
+                else
+                {
+                    _logger.LogError("Payment not inserted in database", pay.correlationId);
+                    await _channel.AddPaymentDatabseAsync(pay);
+                }
+                
             }
         }
     }

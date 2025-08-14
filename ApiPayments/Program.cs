@@ -1,23 +1,27 @@
 using ApiPayment.ApiBackgroundServices;
 using ApiPayments.ApiBackgroundServices;
 using ApiPaymentServices;
-using ApiPaymentServices.Singletons.QueueService;
-using ApiPaymentServices.Singletons.State;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<ApiDbContext>();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        policy =>
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        });
+});
 
 //Services
 builder.Services.AddPaymentServices(builder.Configuration);
 
-//Singletons
-builder.Services.AddSingleton<PaymentQueueService>();
-builder.Services.AddSingleton<ExternalPaymentServiceState>();
-
 //Background Services
 builder.Services.AddHostedService<VerifyApiExternalBackgroundService>();
 builder.Services.AddHostedService<ProcessPaymentBackgroundService>();
+
 
 builder.Services.AddControllers();
 
@@ -27,11 +31,14 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+app.UseCors("AllowAll");
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
 
 app.UseHttpsRedirection();
 

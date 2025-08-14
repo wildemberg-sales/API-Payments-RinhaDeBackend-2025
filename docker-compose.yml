@@ -2,10 +2,28 @@ version: '3.8'
 
 services:
 
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: rinha-nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api1
+      - api2
+    ports:
+      - "9999:9999"
+    networks:
+      - local
+    deploy:
+      resources:
+        limits:
+          cpus: "0.15"
+          memory: "15MB"
+
   api1:
     build:
-      context: ..
-      dockerfile: ApiPayments/Dockerfile
+      context: .
+      dockerfile: ApiPayments/DockerfileProd
     container_name: api_instance_1
     restart: always
     ports:
@@ -21,25 +39,36 @@ services:
       - ConnectionStrings__Local=Host=db;Database=payments_db;Username=db_user;Password=1234
       - "URL_DEFAULT=http://payment-processor-default:8080"
       - "URL_FALLBACK=http://payment-processor-fallback:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.57"
+          memory: "115MB"
   
   api2:
     build:
-      context: ..
-      dockerfile: ApiPayments/Dockerfile
+      context: .
+      dockerfile: ApiPayments/DockerfileProd
     container_name: api_instance_2
     restart: always
     ports:
-      - "5002:8001"
+      - "5002:8080"
     depends_on:
       db:
         condition: service_healthy
     networks:
       - payment-processor
+      - local
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=db;Database=payments_db;Username=db_user;Password=1234
+      - ConnectionStrings__Local=Host=db;Database=payments_db;Username=db_user;Password=1234
       - "URL_DEFAULT=http://payment-processor-default:8080"
       - "URL_FALLBACK=http://payment-processor-fallback:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.57"
+          memory: "115MB"
 
   db:
     image: postgres:15-alpine
@@ -60,6 +89,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.21"
+          memory: "105MB"
 
 networks:
   local:

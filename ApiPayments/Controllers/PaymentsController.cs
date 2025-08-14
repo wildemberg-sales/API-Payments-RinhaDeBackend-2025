@@ -1,4 +1,5 @@
-﻿using ApiPaymentServices.Models.Requests;
+﻿using ApiPaymentServices.Channels;
+using ApiPaymentServices.Models.Requests;
 using ApiPaymentServices.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,12 +11,14 @@ namespace ApiPayments.Controllers
         [HttpPost("payments")]
         public async Task<IActionResult> CreatePayment
         (
-            [FromServices] IPaymentService service,
+            [FromServices] QueuePaymentDatabaseChannel _channel,
             [FromBody] PaymentPayloadModel payload
         )
         {
-            var res = await service.CreatePaymentAsync(payload);
-            return StatusCode((int)res.StatusCode, res);
+
+            await _channel.AddPaymentDatabseAsync(payload);
+
+            return Created();
         }
 
         [HttpGet("payments-summary")]

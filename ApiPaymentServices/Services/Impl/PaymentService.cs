@@ -1,45 +1,39 @@
-﻿using ApiPaymentServices.Models;
+﻿using ApiPaymentServices.Channels;
+using ApiPaymentServices.Models;
 using ApiPaymentServices.Models.Requests;
-using ApiPaymentServices.Singletons.QueueService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Net;
 
 namespace ApiPaymentServices.Services.Impl
 {
-    internal sealed class PaymentService : IPaymentService
+    public sealed class PaymentService : IPaymentService
     {
         private readonly ApiDbContext _context;
         private readonly ILogger<PaymentService> _logger;
-        private readonly PaymentQueueService _queueService;
+        private readonly QueuePaymentDatabaseChannel _channel;
 
-        public PaymentService(ApiDbContext context, ILogger<PaymentService> logger, PaymentQueueService queueService)
+        public PaymentService(ApiDbContext context, ILogger<PaymentService> logger, QueuePaymentDatabaseChannel channel)
         {
             _context = context;
             _logger = logger;
-            _queueService = queueService;
+            _channel = channel;
         }
 
-        public async Task<HttpResponseResult<Payment>> CreatePaymentAsync(PaymentPayloadModel payment)
+        public async Task<bool> CreatePaymentAsync(Payment payment)
         {
-            Payment pay = Payment.Create(payment.correlationId, payment.amount);
-
             try
             {
-                _context.Payments.Add(pay);
+                _context.Payments.Add(payment);
                 await _context.SaveChangesAsync();
             }
             catch (Exception ex)
             {
                 _logger.LogError($"Error in creation: {ex.Message}");
-                return HttpResponseResult<Payment>.Fail("Payment Not Created", HttpStatusCode.BadRequest);
+                return false;
             }
 
-            _logger.LogInformation("Payment Created Successfully");
-            
-            _queueService.queue.Enqueue(pay);
-
-            return HttpResponseResult<Payment>.Created(pay, "Payment Created Successfully");
+            return true;
         }
 
         public async Task UpdatePaymentAsync(Payment payment, bool isFallback, DateTime requestedAt)
@@ -66,7 +60,7 @@ namespace ApiPaymentServices.Services.Impl
                 query = query.Where(p => p.CreatedAt >= from);
             
             if(to != null)
-                query = query.Where(p => p.CreatedAt <= from);
+                query = query.Where(p => p.CreatedAt <= to);
 
             var res = await query.ToListAsync();
 
