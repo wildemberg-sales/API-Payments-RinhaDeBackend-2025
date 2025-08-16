@@ -1,8 +1,9 @@
 using ApiPayment.ApiBackgroundServices;
 using ApiPayments.ApiBackgroundServices;
 using ApiPaymentServices;
+using ApiPaymentServices.Utils;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateSlimBuilder(args);
 
 builder.Services.AddCors(options =>
 {
@@ -13,6 +14,11 @@ builder.Services.AddCors(options =>
                   .AllowAnyMethod()
                   .AllowAnyHeader();
         });
+});
+
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.TypeInfoResolver = new ApiJsonSerializerContext();
 });
 
 //Services
@@ -38,7 +44,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
 
 app.UseHttpsRedirection();
 

@@ -1,30 +1,37 @@
-# Base image para o runtime
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+ARG BUILD_CONFIGURATION=Release
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    clang zlib1g-dev curl && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+
+# Copia os arquivos .csproj e restaura as dependências primeiro para otimizar o cache
+COPY ["ApiPayments/ApiPayments.csproj", "ApiPayments/"]
+COPY ["ApiPaymentServices/ApiPaymentServices.csproj", "ApiPaymentServices/"]
+RUN dotnet restore "ApiPayments/ApiPayments.csproj"
+
+# Copia todo o resto do código-fonte
+COPY . .
+
+# Publica a aplicação como um executável AOT nativo para Linux
+WORKDIR "/src/ApiPayments"
+RUN dotnet publish "ApiPayments.csproj" -c $BUILD_CONFIGURATION -o /app/publish -r linux-x64 --verbosity diagnostic
+
+# --- Imagem Final ---
+# ESTA É A GRANDE MUDANÇA: Usamos a imagem 'runtime-deps'.
+# Ela é minúscula e contém apenas as dependências nativas do Linux (como libc, ICU),
+# mas NÃO contém o runtime do .NET, pois nossa aplicação já é autocontida.
+FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-alpine AS final
 WORKDIR /app
 EXPOSE 8080
 
-# SDK image para build
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-ARG BUILD_CONFIGURATION=Release
-WORKDIR /src
+# Copia apenas os arquivos publicados do estágio de build
+COPY --from=build /app/publish .
 
-COPY . .
-WORKDIR /src/ApiPayments
-RUN dotnet restore "ApiPayments.csproj"
-RUN dotnet build "ApiPayments.csproj" -c $BUILD_CONFIGURATION -o /app/build
-
-# Publica o projeto
-FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
-WORKDIR /src/ApiPayments
-RUN dotnet publish "ApiPayments.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
-
-# Imagem final
-FROM base AS final
-WORKDIR /app
-COPY --from=publish /app/publish .
-
-# Garante que vai ouvir na porta 8080
-ENV ASPNETCORE_URLS=http://+:8080
-
-ENTRYPOINT ["dotnet", "ApiPayments.dll"]
+# ESTA É A SEGUNDA GRANDE MUDANÇA: Executa o aplicativo nativo diretamente.
+# Não usamos mais 'dotnet'. O ENTRYPOINT agora é o próprio executável.
+ENTRYPOINT ["./ApiPayments"]

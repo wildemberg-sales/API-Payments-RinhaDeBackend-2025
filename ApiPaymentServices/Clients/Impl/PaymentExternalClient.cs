@@ -1,6 +1,7 @@
 ﻿using ApiPaymentServices.Models;
 using ApiPaymentServices.Models.Requests;
 using ApiPaymentServices.Singletons.State;
+using ApiPaymentServices.Utils;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
 
@@ -26,10 +27,10 @@ namespace ApiPaymentServices.Clients.Impl
             try
             {
                 var responseDefault = await client.GetAsync($"{urlDefault}/payments/service-health");
-                var dataDefault = await responseDefault.Content.ReadFromJsonAsync<PaymentHealthCheckResponse>();
+                var dataDefault = await responseDefault.Content.ReadFromJsonAsync(ApiJsonSerializerContext.Default.PaymentHealthCheckResponse);
 
                 var responseFallback = await client.GetAsync($"{urlFallback}/payments/service-health");
-                var dataFallback = await responseFallback.Content.ReadFromJsonAsync<PaymentHealthCheckResponse>();
+                var dataFallback = await responseFallback.Content.ReadFromJsonAsync(ApiJsonSerializerContext.Default.PaymentHealthCheckResponse);
 
                 _logger.LogInformation("Successfully in health check requisiton");
 
@@ -55,20 +56,19 @@ namespace ApiPaymentServices.Clients.Impl
                 _logger.LogWarning("Default Route Payment");
                 try
                 {
-                    var response = await client.PostAsJsonAsync($"{urlDefault}/payments", new
+                    var response = await client.PostAsJsonAsync($"{urlDefault}/payments", 
+                    new PaymentPayloadRequestModel
                     {
                         correlationId = payment.CorrelationId,
                         amount = payment.Amount,
-                        requestedAt,
-                    });
+                        requestedAt=requestedAt,
+                    },
+                    ApiJsonSerializerContext.Default.PaymentPayloadRequestModel);
 
                     if (!response.IsSuccessStatusCode)
                     {
                         var responseBody = await response.Content.ReadAsStringAsync();
-                        _logger.LogError("Fail Payment. Status: {StatusCode} - {ReasonPhrase}. Body: {ResponseBody}",
-                            (int)response.StatusCode,
-                            response.ReasonPhrase,
-                            responseBody);
+                        _logger.LogError("Fail Payment: ", payment.CorrelationId);
                         return (false, false, requestedAt);
                     }
 
@@ -86,17 +86,24 @@ namespace ApiPaymentServices.Clients.Impl
                 _logger.LogWarning("Fallback Route Payment");
                 try
                 {
-                    var response = await client.PostAsJsonAsync($"{urlFallback}/payments", new
+                    var response = await client.PostAsJsonAsync($"{urlFallback}/payments",
+                    new PaymentPayloadRequestModel
                     {
                         correlationId = payment.CorrelationId,
                         amount = payment.Amount,
-                        requestedAt,
-                    });
+                        requestedAt = requestedAt,
+                    },
+                    ApiJsonSerializerContext.Default.PaymentPayloadRequestModel);
 
-                    if (response.IsSuccessStatusCode)
-                        return (true, true, requestedAt);
 
-                    return (false, true, requestedAt);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var responseBody = await response.Content.ReadAsStringAsync();
+                        _logger.LogError("Fail Payment: ", payment.CorrelationId);
+                        return (false, false, requestedAt);
+                    }
+
+                    return (true, true, requestedAt);
                 }
                 catch (Exception ex)
                 {

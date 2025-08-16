@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
 
   nginx:
@@ -17,8 +15,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.15"
-          memory: "15MB"
+          cpus: "0.2"
+          memory: "40MB"
 
   api1:
     build:
@@ -35,15 +33,15 @@ services:
       - payment-processor
       - local
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__Local=Host=db;Database=payments_db;Username=db_user;Password=1234
       - "URL_DEFAULT=http://payment-processor-default:8080"
       - "URL_FALLBACK=http://payment-processor-fallback:8080"
     deploy:
       resources:
         limits:
-          cpus: "0.57"
-          memory: "115MB"
+          cpus: "0.55"
+          memory: "75MB"
   
   api2:
     build:
@@ -60,18 +58,18 @@ services:
       - payment-processor
       - local
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__Local=Host=db;Database=payments_db;Username=db_user;Password=1234
       - "URL_DEFAULT=http://payment-processor-default:8080"
       - "URL_FALLBACK=http://payment-processor-fallback:8080"
     deploy:
       resources:
         limits:
-          cpus: "0.57"
-          memory: "115MB"
+          cpus: "0.55"
+          memory: "75MB"
 
   db:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     container_name: postgres_db
     restart: always
     environment:
@@ -84,6 +82,14 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - local
+    command: >
+      postgres
+      -c fsync=off
+      -c synchronous_commit=off
+      -c wal_level=minimal
+      -c max_wal_senders=0
+      -c autovacuum=off
+      -c full_page_writes=off
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U db_user -d payments_db"]
       interval: 5s
@@ -92,8 +98,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.21"
-          memory: "105MB"
+          cpus: "0.2"
+          memory: "160MB"
 
 networks:
   local:
